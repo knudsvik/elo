@@ -1,0 +1,17 @@
+CLUBS = {"Bodø/Glimt":"Bodoe Glimt",
+         "Brann": "Brann",
+         "HamKam": "Ham-Kam",
+         "Haugesund": "Haugesund",
+         "Lillestrøm": "Lillestrom",
+         "Molde": "Molde",
+         "Odd": "Odd Grenland",
+         "Rosenborg": "Rosenborg",
+         "Sandefjord": "Sandefjord",
+         "Sarpsborg 08": "Sarpsborg",
+         "Stabæk": "Stabaek",
+         "Strømsgodset": "Stromsgodset",
+         "Tromsø": "Tromso",
+         "Viking": "Viking",
+         "Vålerenga": "Valerenga",
+         "Aalesund": "Aalesund"
+         }
