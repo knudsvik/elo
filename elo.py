@@ -20,9 +20,10 @@ class Club:
         
 class Match:
 
-    def __init__(self, home, away):
+    def __init__(self, home, away, home_goals, away_goals):
         self.home = Club(home)
         self.away = Club(away)
+        self.margin = abs(home_goals - away_goals)
         print(f"The {self.home.name} vs {self.away.name} game has been initialised.")
         
         self.dr = abs(self.home.elo - self.away.elo)
