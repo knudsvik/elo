@@ -1,8 +1,11 @@
 import pandas as pd
+import random
 import requests
 from datetime import date
 from io import StringIO
 from const import CLUBS
+
+DEBUG = False
 
 # Fetch latest one-day ELO rankings:
 today = date.today()
@@ -24,39 +27,38 @@ class Club:
         
 class Match:
 
-    def __init__(self, home, away, home_goals, away_goals, home_advantage = 100):
+    def __init__(self, home, away, home_goals=None, away_goals=None, home_advantage = 100):
         self.hfa = home_advantage
         self.home = Club(home)
         self.away = Club(away)
-        self.margin = abs(home_goals - away_goals)
-        if home_goals == away_goals:
+
+        self.home_goals = home_goals
+        self.away_goals = away_goals
+
+        self.dr = self.home.elo + self.hfa - self.away.elo
+        self.elo = 1 / (10 ** (-self.dr / 400) + 1)
+
+        if DEBUG:
+            print(f"The {self.home.name} vs {self.away.name} game has been initialised.")
+            print(f"The ELO of home team, {self.home.name}, before match is: {round(self.home.elo, 1)}")
+            print(f"The ELO of away team, {self.away.name}, before match is: {round(self.away.elo, 1)}")
+            print(f"The ELO difference is: {round(self.dr, 1)}")
+            print(f"The Calculated expected score for home team is: {round(self.elo, 2)}")
+
+        # Only do result logic if real goals were provided
+        if self.home_goals is not None and self.away_goals is not None:
+            self.set_result_from_goals()
+            self.expected_elo_exchange()
+            if DEBUG:
+                print(f"Expected ELO exchange points for a {self.home.name} win: {self.expected_elo_exchange}")
+
+    def set_result_from_goals(self):
+        if self.home_goals == self.away_goals:
             self.result = "draw"
-        elif home_goals > away_goals:
+        elif self.home_goals > self.away_goals:
             self.result = "home"
         else:
             self.result = "away"
-        print(f"The {self.home.name} vs {self.away.name} game has been initialised.")
-        
-        self.dr = abs(self.home.elo + self.hfa - self.away.elo)
-        
-        print(f"The ELO of home team, {self.home.name}, before match is: {round(self.home.elo, 1)}")
-        print(f"The ELO of away team, {self.away.name}, before match is: {round(self.away.elo, 1)}")
-        print(f"The ELO difference is: {round(self.dr, 1)}")
-
-        self.elo()
-        self.expected_elo_exchange()
-
-        print(f"The Calculated elo is: {round(self.elo, 2)}")
-        return print(f"Expected ELO exchange points for a {self.home.name} win: {self.expected_elo_exchange}")
-
-
-    def elo(self):
-        '''
-        The ELO equation
-        from http://clubelo.com/System
-        '''
-        self.elo = 1 / (10 ** (-self.dr / 400) + 1)
-
 
     def expected_elo_exchange(self, k=20):
         '''
@@ -74,9 +76,40 @@ class Match:
 
         self.expected_elo_exchange = (R - self.elo) * k
 
-        
-    
 
+    def simulate_result_probabilistic(self):
+
+        # Step 1: Use already-calculated expected score
+        expected_home_score = self.elo  # This is already calculated in __init__
+        delta_elo = self.dr
+
+        # Step 2: Estimate draw chance (ClubElo-inspired)
+        p_draw = draw_probability(delta_elo)
+        p_draw = max(0.10, p_draw)
+
+        # Step 3: Split rest between home/away
+        p_home = expected_home_score - p_draw / 2
+        p_away = 1 - p_home - p_draw
+
+        # Safety checks
+        p_home = max(0, min(1, p_home))
+        p_away = max(0, min(1, p_away))
+
+        # Step 4: Simulate result
+        roll = random.random()
+        if roll < p_home:
+            self.result = "home"
+        elif roll < p_home + p_draw:
+            self.result = "draw"
+        else:
+            self.result = "away"
+
+        if DEBUG:
+            print(f"Simulated match result: {self.home.name} vs {self.away.name}")
+            print(f"Probabilities: Home {round(p_home*100)}% | Draw {round(p_draw*100)}% | Away {round(p_away*100)}%")
+            print(f"Random draw: {round(roll, 3)} → Result: {self.result.capitalize()}")
+
+    ## NOT IN USE YET
     def elo_exchange_margin(self, p_margin):
         '''
         Weighting goal difference
@@ -89,7 +122,7 @@ class Match:
 
         return print(f"ELO exchange points for home team due to margin: {self.elo_points_margin}")
 
-
+    ## NOT IN USE YET
     def update_tilt(self, exp_game_total_goals, game_total_goals):
         '''
         Updates tilt after a game
@@ -100,11 +133,38 @@ class Match:
         self.away.tilt = 0.98 * self.away.tilt + 0.02 * game_total_goals / self.home.tilt / exp_game_total_goals
         return print(f"The tilts have been updated, new home team tilt: {self.home.tilt}, new away team tilt: {self.away.tilt}")
     
-class Fixtures:
+    def simulate_result(self):
+        prob_home = self.elo
+        p_draw = 0.20
+        p_home_win = max(min(prob_home - p_draw / 2, 0.85), 0.05)
+        p_away_win = 1 - p_home_win - p_draw
 
-    def __init__(self):
-        r = requests.get(f'http://api.clubelo.com/Fixtures')
-        data = StringIO(r.text)
-        self.data = pd.read_csv(data, sep=",")
+        roll = random.random()
+
+        if roll < p_home_win:
+            self.result = "home"
+        elif roll < p_home_win + p_draw:
+            self.result = "draw"
+        else:
+            self.result = "away"
     
         
+def simulate(home, away, n=1000, hfa=59):
+    results = {"home": 0, "draw": 0, "away": 0}
+
+    for _ in range(n):
+        match = Match(home, away, home_advantage=hfa)
+        match.simulate_result_probabilistic()
+        results[match.result] += 1
+
+    print(f"\nSimulated {n} matches between {home} and {away}:")
+    for result, count in results.items():
+        percentage = round(100 * count / n, 1)
+        print(f"{result.capitalize():<5}: {count} ({percentage}%)")
+
+    return results
+
+def draw_probability(delta_elo):
+    # Higher draws near 0, lower draws when one team is much stronger
+    p_draw = 0.29 - 0.0006 * abs(delta_elo)
+    return max(0.12, min(p_draw, 0.35))
