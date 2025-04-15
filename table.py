@@ -48,6 +48,8 @@ def build_league_table(results_df):
     df_table.index.name = "Team"
     df_table = df_table.sort_values(["Points", "GD", "GF"], ascending=False).reset_index()
 
+    df_table.insert(0, "Position", range(1, len(df_table) + 1))
+
     int_columns = ["Games", "Wins", "Draws", "Losses", "GF", "GA", "GD", "Points"]
     df_table[int_columns] = df_table[int_columns].astype(int)
 
