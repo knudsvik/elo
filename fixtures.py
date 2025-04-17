@@ -49,3 +49,8 @@ away_goals = pd.to_numeric(goals[1], errors='coerce')
 # Fill NaN with empty string, otherwise convert to int then to string
 fixtures['home_goals'] = home_goals
 fixtures['away_goals'] = away_goals
+
+int_columns = ["round", "match number"]
+fixtures[int_columns] = fixtures[int_columns].astype(int)
+
+fixtures["date"] = pd.to_datetime(fixtures["date"], format="%d.%m.%Y", errors="coerce")
