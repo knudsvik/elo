@@ -15,3 +15,5 @@ CLUBS = {"Bodø/Glimt":"Bodoe Glimt",
          "Viking": "Viking",
          "Vålerenga": "Valerenga"
          }
+
+HFA = 61.2  # Home Field Advantage Norway (from ClubELO)
