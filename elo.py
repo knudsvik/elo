@@ -3,7 +3,7 @@ import random
 import requests
 from datetime import date
 from io import StringIO
-from const import CLUBS
+from const import CLUBS, HFA
 
 DEBUG = False
 
@@ -27,7 +27,7 @@ class Club:
         
 class Match:
 
-    def __init__(self, home, away, home_goals=None, away_goals=None, home_advantage = 100):
+    def __init__(self, home, away, home_goals=None, away_goals=None, home_advantage = HFA):
         self.hfa = home_advantage
         self.home = Club(home)
         self.away = Club(away)
@@ -77,7 +77,7 @@ class Match:
         self.expected_elo_exchange = (R - self.elo) * k
 
 
-    def simulate_result_probabilistic(self):
+    def simulate_result(self):
 
         # Step 1: Use already-calculated expected score
         expected_home_score = self.elo  # This is already calculated in __init__
@@ -133,28 +133,13 @@ class Match:
         self.away.tilt = 0.98 * self.away.tilt + 0.02 * game_total_goals / self.home.tilt / exp_game_total_goals
         return print(f"The tilts have been updated, new home team tilt: {self.home.tilt}, new away team tilt: {self.away.tilt}")
     
-    def simulate_result(self):
-        prob_home = self.elo
-        p_draw = 0.20
-        p_home_win = max(min(prob_home - p_draw / 2, 0.85), 0.05)
-        p_away_win = 1 - p_home_win - p_draw
-
-        roll = random.random()
-
-        if roll < p_home_win:
-            self.result = "home"
-        elif roll < p_home_win + p_draw:
-            self.result = "draw"
-        else:
-            self.result = "away"
-    
         
-def simulate(home, away, n=1000, hfa=59):
+def simulate(home, away, n=1000, hfa=HFA):
     results = {"home": 0, "draw": 0, "away": 0}
 
     for _ in range(n):
         match = Match(home, away, home_advantage=hfa)
-        match.simulate_result_probabilistic()
+        match.simulate_result()
         results[match.result] += 1
 
     print(f"\nSimulated {n} matches between {home} and {away}:")
