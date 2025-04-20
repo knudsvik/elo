@@ -70,4 +70,9 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None):
     position_df = pd.DataFrame(position_counts).T.fillna(0)
     position_df = position_df.apply(lambda row: (row / row.sum()) * 100, axis=1)
 
+    # Sort the columns numerically, and then by 1st place
+    position_df = position_df[sorted(position_df.columns, key=lambda x: int(x))]
+    position_df = position_df.sort_values(by=1, ascending=False)
+    position_df = position_df.round(2)
+
     return expected_points_df, position_df
