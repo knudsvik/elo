@@ -10,9 +10,11 @@ tqdm.pandas()
 
 position_counts = defaultdict(lambda: defaultdict(int))
 
-def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None):
+def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025):
     if cutoff_date is None:
         cutoff_date = datetime.max
+
+    fixtures_df = fixtures_df.loc[fixtures_df.season == season]
 
     # Split played and unplayed fixtures
     played = fixtures_df[~fixtures_df["home_goals"].isna()]
@@ -70,9 +72,12 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None):
     position_df = pd.DataFrame(position_counts).T.fillna(0)
     position_df = position_df.apply(lambda row: (row / row.sum()) * 100, axis=1)
 
+    expected_points_df = expected_points_df.set_index("Team")
+    position_df = position_df.loc[expected_points_df.index]
+
     # Sort the columns numerically, and then by 1st place
-    position_df = position_df[sorted(position_df.columns, key=lambda x: int(x))]
-    position_df = position_df.sort_values(by=1, ascending=False)
-    position_df = position_df.round(2)
+    #position_df = position_df[sorted(position_df.columns, key=lambda x: int(x))]
+    #position_df = position_df.sort_values(by=1, ascending=False)
+    #position_df = position_df.round(2)
 
     return expected_points_df, position_df

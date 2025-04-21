@@ -2,44 +2,55 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-url = "https://www.fotball.no/fotballdata/turnering/terminliste/?fiksId=199603"
 headers = {
     "User-Agent": "Mozilla/5.0"
-}
+    }
+base_url = "https://www.fotball.no/fotballdata/turnering/terminliste/?fiksId="
+fixtures = pd.DataFrame()
 
-response = requests.get(url, headers=headers)
-soup = BeautifulSoup(response.text, "html.parser")
+tournaments = {2025: '199603',
+               2024: '192924',
+               2023: '186850',
+               2022: '181484'
+               }
 
-# Look for table rows (tr) in the fixture list
-rows = soup.find_all("tr")
+for season in tournaments:
 
-data = []
-for row in rows:
-    cols = row.find_all("td")
-    if len(cols) >= 5:
-        round = cols[0].text.strip()
-        date = cols[1].text.strip()
-        day = cols[2].text.strip()
-        time = cols[3].text.strip()
-        home = cols[4].text.strip()
-        result = cols[5].text.strip()
-        away = cols[6].text.strip()
-        arena = cols[7].text.strip()
-        match_no = cols[8].text.strip()
+    url = base_url + tournaments[season]
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
 
-        data.append({
-            "round": round,
-            "date": date,
-            "time": time,
-            "home": home,
-            "result": result,
-            "away": away,
-            "arena": arena,
-            "match number": match_no
-        })
+    # Look for table rows (tr) in the fixture list
+    rows = soup.find_all("tr")
 
-# Convert to DataFrame
-fixtures = pd.DataFrame(data)
+    data = []
+    for row in rows:
+        cols = row.find_all("td")
+        if len(cols) >= 5:
+            round = cols[0].text.strip()
+            date = cols[1].text.strip()
+            day = cols[2].text.strip()
+            time = cols[3].text.strip()
+            home = cols[4].text.strip()
+            result = cols[5].text.strip()
+            away = cols[6].text.strip()
+            arena = cols[7].text.strip()
+            match_no = cols[8].text.strip()
+
+            data.append({
+                "season": season,
+                "round": round,
+                "date": date,
+                "time": time,
+                "home": home,
+                "result": result,
+                "away": away,
+                "arena": arena,
+                "match number": match_no
+            })
+
+    # Add to DataFrame
+    fixtures = pd.concat([fixtures, pd.DataFrame(data)], ignore_index=True)
 
 goals = fixtures['result'].str.split('-', n=1, expand=True).apply(lambda col: col.str.strip())
 
