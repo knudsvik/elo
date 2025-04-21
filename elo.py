@@ -4,6 +4,8 @@ import requests
 from datetime import date
 from io import StringIO
 from const import CLUBS, HFA
+import numpy as np
+from fixtures import tilts
 
 DEBUG = False
 
@@ -14,16 +16,18 @@ r = requests.get(f'http://api.clubelo.com/{today}')
 data = StringIO(r.text)
 df_elo = pd.read_csv(data, sep=",")
 
+mean_goals = 3.07 # mean scored goals from 2022-2025 in Eliteserien
+
 class Club:
 
-    def __init__(self, name):
+    def __init__(self, name, tilt_lookup=True):
         self.name = name
         if self.name in CLUBS:
             self.name_elo = CLUBS.get(self.name)
         else:
             self.name_elo = self.name
         self.elo = df_elo.loc[df_elo['Club'] == self.name_elo]["Elo"].values[0]
-        self.tilt = 1  # Should have 50 games in it..
+        self.tilt = tilts.get(name, 1) if tilt_lookup else 1
         
 class Match:
 
@@ -109,6 +113,27 @@ class Match:
             print(f"Probabilities: Home {round(p_home*100)}% | Draw {round(p_draw*100)}% | Away {round(p_away*100)}%")
             print(f"Random draw: {round(roll, 3)} → Result: {self.result.capitalize()}")
 
+    def simulate_goals(self, base_goals=mean_goals):
+        """Simulate realistic scorelines using tilt logic"""
+        # Step 1: Expected total goals
+        exp_total_goals = self.home.tilt * self.away.tilt * base_goals
+
+        # Step 2: Expected goal share (favoring the stronger team)
+        home_share = self.elo  # already calculated: expected result for home team
+        away_share = 1 - home_share
+
+        exp_home_goals = exp_total_goals * home_share
+        exp_away_goals = exp_total_goals * away_share
+
+        # Step 3: Simulate actual goals using Poisson distribution
+        self.home_goals = np.random.poisson(exp_home_goals)
+        self.away_goals = np.random.poisson(exp_away_goals)
+
+        self.set_result_from_goals()
+
+        if DEBUG:
+            print(f"Simulated score: {self.home.name} {self.home_goals} - {self.away_goals} {self.away.name}")
+
     ## NOT IN USE YET
     def elo_exchange_margin(self, p_margin):
         '''
@@ -132,22 +157,7 @@ class Match:
         self.home.tilt = 0.98 * self.home.tilt + 0.02 * game_total_goals / self.away.tilt / exp_game_total_goals
         self.away.tilt = 0.98 * self.away.tilt + 0.02 * game_total_goals / self.home.tilt / exp_game_total_goals
         return print(f"The tilts have been updated, new home team tilt: {self.home.tilt}, new away team tilt: {self.away.tilt}")
-    
-        
-def simulate(home, away, n=1000, hfa=HFA):
-    results = {"home": 0, "draw": 0, "away": 0}
 
-    for _ in range(n):
-        match = Match(home, away, home_advantage=hfa)
-        match.simulate_result()
-        results[match.result] += 1
-
-    print(f"\nSimulated {n} matches between {home} and {away}:")
-    for result, count in results.items():
-        percentage = round(100 * count / n, 1)
-        print(f"{result.capitalize():<5}: {count} ({percentage}%)")
-
-    return results
 
 def draw_probability(delta_elo):
     # Higher draws near 0, lower draws when one team is much stronger

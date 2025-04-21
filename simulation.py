@@ -5,12 +5,43 @@ from collections import defaultdict
 import pandas as pd
 from datetime import datetime
 from tqdm.notebook import tqdm
+from const import HFA
 
 tqdm.pandas()
 
 position_counts = defaultdict(lambda: defaultdict(int))
 
-def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025):
+def simulate_match(home, away, n=1000, hfa=HFA, simulate_goals=True):
+    results = {"home": 0, "draw": 0, "away": 0}
+    scores = defaultdict(int)
+
+    for _ in range(n):
+        match = Match(home, away, home_advantage=hfa)
+        if simulate_goals:
+            match.simulate_goals()
+            result = (match.home_goals, match.away_goals)
+            scores[result] += 1
+        else:
+            match.simulate_result()
+        results[match.result] += 1
+
+    print(f"\nSimulated {n} matches between {home} and {away}:")
+    for result, count in results.items():
+        percentage = round(100 * count / n, 1)
+        print(f"{result.capitalize():<5}: {count} ({percentage}%)")
+
+    if simulate_goals:
+        # Get top 10 most common results
+        top_scores = sorted(scores.items(), key=lambda x: (-x[1], x[0]))[:10]
+
+        # Print the top 10 with percentages
+        for score, count in top_scores:
+            percentage = (count / n) * 100
+            print(f"{score[0]} - {score[1]}: {percentage:.2f}%")
+
+    return results
+
+def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025, simulate_goals=True):
     if cutoff_date is None:
         cutoff_date = datetime.max
 
@@ -33,7 +64,10 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
 
         for _, row in upcoming.iterrows():
             match = Match(row["home"], row["away"])
-            match.simulate_result()
+            if simulate_goals:
+                match.simulate_goals()
+            else:
+                match.simulate_result()
 
             if match.result == "home":
                 home_goals, away_goals = 2, 1
