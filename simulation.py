@@ -49,32 +49,42 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
 
     # Split played and unplayed fixtures
     played = fixtures_df[~fixtures_df["home_goals"].isna()]
-    upcoming = fixtures_df[
+    to_simulate = fixtures_df[
         (fixtures_df["home_goals"].isna()) &
         (fixtures_df["date"].notna()) &
         (fixtures_df["date"] <= cutoff_date)
     ]
 
-    team_points_tracker = defaultdict(list)
+    stats_tracker = defaultdict(lambda: {
+        "Wins": [],
+        "Draws": [],
+        "Losses": [],
+        "GF": [],
+        "GA": [],
+        "Points": [],
+    })
 
-    print(f'{len(played)} games have been played. Starting {n_simulations} simulations of {len(upcoming)} games.')
+    position_counts = defaultdict(lambda: defaultdict(int))
 
-    for sim in tqdm(range(n_simulations), desc="Simulating seasons", leave=True):
+    print(f'{len(played)} games have been played. Starting {n_simulations} simulations of {len(to_simulate)} games.')
+
+    for _ in tqdm(range(n_simulations), desc="Simulating seasons", leave=True):
         simulated_fixtures = played.copy()
 
-        for _, row in upcoming.iterrows():
+        for _, row in to_simulate.iterrows():
             match = Match(row["home"], row["away"])
             if simulate_goals:
                 match.simulate_goals()
+                home_goals = match.home_goals
+                away_goals = match.away_goals
             else:
                 match.simulate_result()
-
-            if match.result == "home":
-                home_goals, away_goals = 2, 1
-            elif match.result == "away":
-                home_goals, away_goals = 1, 2
-            else:
-                home_goals = away_goals = 1
+                if match.result == "home":
+                    home_goals, away_goals = 2, 1
+                elif match.result == "away":
+                    home_goals, away_goals = 1, 2
+                else:
+                    home_goals = away_goals = 1
 
             sim_row = row.copy()
             sim_row["home_goals"] = home_goals
@@ -86,32 +96,47 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
         league_table = build_league_table(simulated_fixtures)
 
         for _, row in league_table.iterrows():
-            team_points_tracker[row["Team"]].append(row["Points"])
             team = row["Team"]
-            pos = row["Position"]
-            position_counts[team][pos] += 1
+            stats_tracker[team]["Wins"].append(row["Wins"])
+            stats_tracker[team]["Draws"].append(row["Draws"])
+            stats_tracker[team]["Losses"].append(row["Losses"])
+            stats_tracker[team]["GF"].append(row["GF"])
+            stats_tracker[team]["GA"].append(row["GA"])
+            stats_tracker[team]["Points"].append(row["Points"])
 
-    # Compute expected points per team
-    expected_points = {
-        team: sum(points_list) / len(points_list)
-        for team, points_list in team_points_tracker.items()
-    }
+            position = row["Position"]
+            position_counts[team][position] += 1
 
-    # Format output
-    expected_points_df = pd.DataFrame.from_dict(expected_points, orient='index', columns=['Expected Points'])
-    expected_points_df = expected_points_df.sort_values("Expected Points", ascending=False)
-    expected_points_df["Expected Points"] = expected_points_df["Expected Points"].round(2)
-    expected_points_df = expected_points_df.reset_index().rename(columns={"index": "Team"})
+    def summarize(stat_list):
+        return round(sum(stat_list) / len(stat_list), 2)
 
+    final_stats = []
+
+    for team, stats in stats_tracker.items():
+        final_stats.append({
+            "Team": team,
+            "Exp Wins": summarize(stats["Wins"]),
+            "Exp Draws": summarize(stats["Draws"]),
+            "Exp Losses": summarize(stats["Losses"]),
+            "Exp GF": summarize(stats["GF"]),
+            "Exp GA": summarize(stats["GA"]),
+            "Exp Points": summarize(stats["Points"]),
+        })
+    
+    df_summary = pd.DataFrame(final_stats)
+    df_summary = df_summary.sort_values("Exp Points", ascending=False).reset_index(drop=True)
+    df_summary.insert(0, "Position", range(1, len(df_summary) + 1))
+    df_summary = df_summary.sort_values(
+        ["Exp Points", "Exp GF", "Exp GA"],
+        ascending=[False, False, True]
+        ).reset_index(drop=True)
+
+    # Percent chance to finish in each position
     position_df = pd.DataFrame(position_counts).T.fillna(0)
     position_df = position_df.apply(lambda row: (row / row.sum()) * 100, axis=1)
+    position_df = position_df.round(2)
 
-    expected_points_df = expected_points_df.set_index("Team")
-    position_df = position_df.loc[expected_points_df.index]
+    # Align position_df with summary ordering
+    position_df = position_df.loc[df_summary["Team"]]
 
-    # Sort the columns numerically, and then by 1st place
-    #position_df = position_df[sorted(position_df.columns, key=lambda x: int(x))]
-    #position_df = position_df.sort_values(by=1, ascending=False)
-    #position_df = position_df.round(2)
-
-    return expected_points_df, position_df
+    return df_summary, position_df
