@@ -1,4 +1,4 @@
-import copy
+import numpy as np
 from table import build_league_table
 from elo import Match
 from collections import defaultdict
@@ -107,14 +107,21 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
             position = row["Position"]
             position_counts[team][position] += 1
 
-    def summarize(stat_list):
-        return round(sum(stat_list) / len(stat_list), 2)
+    return stats_tracker, position_counts
+
+def build_season_summary(stats_tracker, position_counts, use_median=False):
+    
+    def summarize(values):
+        if use_median:
+            return int(np.median(values))
+        else:
+            return round(np.mean(values), 2)
 
     final_stats = []
-
     for team, stats in stats_tracker.items():
         final_stats.append({
             "Team": team,
+            "Games": summarize(stats["Wins"]) + summarize(stats["Draws"]) + summarize(stats["Losses"]),
             "Exp Wins": summarize(stats["Wins"]),
             "Exp Draws": summarize(stats["Draws"]),
             "Exp Losses": summarize(stats["Losses"]),
@@ -122,7 +129,7 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
             "Exp GA": summarize(stats["GA"]),
             "Exp Points": summarize(stats["Points"]),
         })
-    
+
     df_summary = pd.DataFrame(final_stats)
     df_summary = df_summary.sort_values("Exp Points", ascending=False).reset_index(drop=True)
     df_summary.insert(0, "Position", range(1, len(df_summary) + 1))
@@ -130,13 +137,15 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
         ["Exp Points", "Exp GF", "Exp GA"],
         ascending=[False, False, True]
         ).reset_index(drop=True)
+    df_summary = df_summary[["Position", "Team", "Games", "Exp Wins", "Exp Draws", "Exp Losses", "Exp GF", "Exp GA", "Exp Points"]]
 
-    # Percent chance to finish in each position
+
+    # Position probabilities (always expected %)
     position_df = pd.DataFrame(position_counts).T.fillna(0)
     position_df = position_df.apply(lambda row: (row / row.sum()) * 100, axis=1)
     position_df = position_df.round(2)
 
-    # Align position_df with summary ordering
+    # Align teams
     position_df = position_df.loc[df_summary["Team"]]
 
     return df_summary, position_df
