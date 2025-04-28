@@ -119,9 +119,10 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
 
     final_stats = []
     for team, stats in stats_tracker.items():
+        total_games_per_sim = [w + d + l for w, d, l in zip(stats["Wins"], stats["Draws"], stats["Losses"])]
         final_stats.append({
             "Team": team,
-            "Games": summarize(stats["Wins"]) + summarize(stats["Draws"]) + summarize(stats["Losses"]),
+            "Games": summarize(total_games_per_sim),
             "Exp Wins": summarize(stats["Wins"]),
             "Exp Draws": summarize(stats["Draws"]),
             "Exp Losses": summarize(stats["Losses"]),
@@ -138,12 +139,16 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
         ascending=[False, False, True]
         ).reset_index(drop=True)
     df_summary = df_summary[["Position", "Team", "Games", "Exp Wins", "Exp Draws", "Exp Losses", "Exp GF", "Exp GA", "Exp Points"]]
-
+    if use_median:
+        df_summary.columns = ["Position", "Team", "Games", "Wins", "Draws", "Losses", "GF", "GA", "Points"]
 
     # Position probabilities (always expected %)
     position_df = pd.DataFrame(position_counts).T.fillna(0)
     position_df = position_df.apply(lambda row: (row / row.sum()) * 100, axis=1)
     position_df = position_df.round(2)
+
+    # Sort columns numerically
+    position_df = position_df.reindex(sorted(position_df.columns, key=lambda x: int(x)), axis=1)
 
     # Align teams
     position_df = position_df.loc[df_summary["Team"]]
