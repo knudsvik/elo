@@ -31,7 +31,7 @@ class Club:
         
 class Match:
 
-    def __init__(self, home, away, home_goals=None, away_goals=None, home_advantage = HFA):
+    def __init__(self, home, away, home_goals=None, away_goals=None, home_advantage = HFA, noise=True):
         self.hfa = home_advantage
         self.home = Club(home)
         self.away = Club(away)
@@ -40,6 +40,10 @@ class Match:
         self.away_goals = away_goals
 
         self.dr = self.home.elo + self.hfa - self.away.elo
+        
+        if noise:
+            self.dr += np.random.normal(0, 15)  # ~15 ELO points
+
         self.elo = 1 / (10 ** (-self.dr / 400) + 1)
 
         if DEBUG:
@@ -79,6 +83,23 @@ class Match:
             R = 0
 
         self.expected_elo_exchange = (R - self.elo) * k
+
+
+    def apply_elo_exchange(self, k=20):
+        if self.result == "draw":
+            R = 0.5
+        elif self.result == "home":
+            R = 1.0
+        else:
+            R = 0.0
+
+        # Calculate expected result again if not cached
+        expected_home = self.elo
+        exchange = (R - expected_home) * k
+
+        self.home.elo += exchange
+        self.away.elo -= exchange
+
 
 
     def simulate_result(self):

@@ -41,7 +41,7 @@ def simulate_match(home, away, n=1000, hfa=HFA, simulate_goals=True):
 
     return results
 
-def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025, simulate_goals=True):
+def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025, simulate_goals=True, elo_updates=True):
     if cutoff_date is None:
         cutoff_date = datetime.max
 
@@ -85,6 +85,9 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
                     home_goals, away_goals = 1, 2
                 else:
                     home_goals = away_goals = 1
+            
+            if elo_updates:
+                match.apply_elo_exchange()
 
             sim_row = row.copy()
             sim_row["home_goals"] = home_goals
