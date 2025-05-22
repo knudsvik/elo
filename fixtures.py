@@ -2,73 +2,61 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 from collections import defaultdict
+from dotenv import load_dotenv
+import os
 
-headers = {
-    "User-Agent": "Mozilla/5.0"
-    }
-base_url = "https://www.fotball.no/fotballdata/turnering/terminliste/?fiksId="
+load_dotenv()
+api_key = os.getenv("RAPID_API_KEY")
+
+url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
+
+seasons = ["2022", "2023", "2024", "2025"]
 fixtures = pd.DataFrame()
 
-tournaments = {2025: '199603',
-               2024: '192924',
-               2023: '186850',
-               2022: '181484'
-               }
+headers = {
+    "X-RapidAPI-Key": api_key,
+    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+}
 
-for season in tournaments:
+for season in seasons:
+    querystring = {
+    "league": "103",       # Eliteserien
+    "season": season}
+    
+    response = requests.get(url, headers=headers, params=querystring)
+    data = response.json()
 
-    url = base_url + tournaments[season]
-    response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, "html.parser")
+    matches = []
 
-    # Look for table rows (tr) in the fixture list
-    rows = soup.find_all("tr")
+    for match in data['response']:
+        date = match['fixture']['date']
+        id = match['fixture']['id']
+        status = match['fixture']['status']['short']
+        venue = match['fixture']['venue']['name']
+        home_goals = match['goals']['home']
+        away_goals = match['goals']['away']
+        home = match['teams']['home']['name']
+        away = match['teams']['away']['name']
 
-    data = []
-    for row in rows:
-        cols = row.find_all("td")
-        if len(cols) >= 5:
-            round = cols[0].text.strip()
-            date = cols[1].text.strip()
-            day = cols[2].text.strip()
-            time = cols[3].text.strip()
-            home = cols[4].text.strip()
-            result = cols[5].text.strip()
-            away = cols[6].text.strip()
-            arena = cols[7].text.strip()
-            match_no = cols[8].text.strip()
-
-            data.append({
+        matches.append({
+                "id": id,
                 "season": season,
-                "round": round,
                 "date": date,
-                "time": time,
                 "home": home,
-                "result": result,
+                "home_goals": home_goals,
                 "away": away,
-                "arena": arena,
-                "match number": match_no
+                "away_goals": away_goals,
+                "venue": venue,
+                "status": status,
             })
 
     # Add to DataFrame
-    fixtures = pd.concat([fixtures, pd.DataFrame(data)], ignore_index=True)
+    fixtures = pd.concat([fixtures, pd.DataFrame(matches)], ignore_index=True)
 
-goals = fixtures['result'].str.split('-', n=1, expand=True).apply(lambda col: col.str.strip())
-
-home_goals = pd.to_numeric(goals[0], errors='coerce').astype("Int64")
-away_goals = pd.to_numeric(goals[1], errors='coerce').astype("Int64")
-
-# Fill NaN with empty string, otherwise convert to int then to string
-fixtures['home_goals'] = home_goals
-fixtures['away_goals'] = away_goals
-
-int_columns = ["round", "match number"]
-fixtures[int_columns] = fixtures[int_columns].astype(int)
-
-fixtures["date"] = pd.to_datetime(fixtures["date"], format="%d.%m.%Y", errors="coerce")
-
-
-
+# Clean the data
+int_columns = ["id", "season", "home_goals", "away_goals"]
+fixtures[int_columns] = fixtures[int_columns].astype("Int64")
+fixtures["date"] = pd.to_datetime(fixtures["date"], errors="coerce")
 
 def compute_initial_tilts(fixtures_df, base_goals=False, max_matches=50):
 
