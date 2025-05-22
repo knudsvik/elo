@@ -141,9 +141,13 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
         ["Exp Points", "Exp GF", "Exp GA"],
         ascending=[False, False, True]
         ).reset_index(drop=True)
-    df_summary = df_summary[["Position", "Team", "Games", "Exp Wins", "Exp Draws", "Exp Losses", "Exp GF", "Exp GA", "Exp Points"]]
+    
+    df_summary["Goals"] = df_summary["Exp GF"].astype(str) + "-" + df_summary["Exp GA"].astype(str)
+    df_summary = df_summary.drop(columns=["Exp GF", "Exp GA"])
+
+    df_summary = df_summary[["Position", "Team", "Games", "Exp Wins", "Exp Draws", "Exp Losses", "Goals", "Exp Points"]]
     if use_median:
-        df_summary.columns = ["Position", "Team", "Games", "Wins", "Draws", "Losses", "GF", "GA", "Points"]
+        df_summary.columns = ["Position", "Team", "Games", "Wins", "Draws", "Losses", "Goals", "Points"]
 
     # Position probabilities (always expected %)
     position_df = pd.DataFrame(position_counts).T.fillna(0)
