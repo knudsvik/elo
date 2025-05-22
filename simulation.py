@@ -3,7 +3,7 @@ from table import build_league_table
 from elo import Match
 from collections import defaultdict
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 from tqdm.notebook import tqdm
 from const import HFA
 
@@ -43,7 +43,7 @@ def simulate_match(home, away, n=1000, hfa=HFA, simulate_goals=True):
 
 def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025, simulate_goals=True, elo_updates=True):
     if cutoff_date is None:
-        cutoff_date = datetime.max
+        cutoff_date = datetime.max.replace(tzinfo=timezone.utc)
 
     fixtures_df = fixtures_df.loc[fixtures_df.season == season]
 

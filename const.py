@@ -1,19 +1,20 @@
-CLUBS = {"Bodø/Glimt":"Bodoe Glimt",
+# First is API, Second is ClubELO
+CLUBS = {"Bodo/Glimt":"Bodoe Glimt",
          "Brann": "Brann",
          "Bryne": "Bryne",
          "Fredrikstad": "Fredrikstad",
-         "HamKam": "Ham-Kam",
+         "Ham-Kam": "Ham-Kam",
          "Haugesund": "Haugesund",
-         "KFUM": "KFUM Oslo",
-         "Kristiansund": "Kristiansund",
+         "KFUM Oslo": "KFUM Oslo",
+         "Kristiansund BK": "Kristiansund",
          "Molde": "Molde",
          "Rosenborg": "Rosenborg",
-         "Sandefjord Fotball": "Sandefjord",
-         "Sarpsborg 08": "Sarpsborg",
-         "Strømsgodset": "Stromsgodset",
-         "Tromsø": "Tromso",
+         "Sandefjord": "Sandefjord",
+         "Sarpsborg 08 FF": "Sarpsborg",
+         "Stromsgodset": "Stromsgodset",
+         "Tromso": "Tromso",
          "Viking": "Viking",
-         "Vålerenga": "Valerenga"
+         "Valerenga": "Valerenga"
          }
 
 HFA = 61.2  # Home Field Advantage Norway (from ClubELO)
