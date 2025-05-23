@@ -3,7 +3,7 @@ import random
 import requests
 from datetime import date
 from io import StringIO
-from const import CLUBS, HFA
+from const import CLUBS, HFA, MEAN_GOALS
 import numpy as np
 from fixtures import tilts
 
@@ -11,22 +11,19 @@ DEBUG = False
 
 # Fetch latest one-day ELO rankings:
 today = date.today()
-#today = "2024-07-11"
 r = requests.get(f'http://api.clubelo.com/{today}')
 data = StringIO(r.text)
 df_elo = pd.read_csv(data, sep=",")
 
-mean_goals = 3.07 # mean scored goals from 2022-2025 in Eliteserien
+#Standardise club names
+variant_to_standard = {variant: standard for standard, variants in CLUBS.items() for variant in variants}
+df_elo['Club'] = df_elo['Club'].apply(lambda x: variant_to_standard.get(x, x))
 
 class Club:
 
     def __init__(self, name, tilt_lookup=True):
         self.name = name
-        if self.name in CLUBS:
-            self.name_elo = CLUBS.get(self.name)
-        else:
-            self.name_elo = self.name
-        self.elo = df_elo.loc[df_elo['Club'] == self.name_elo]["Elo"].values[0]
+        self.elo = df_elo.loc[df_elo['Club'] == self.name]["Elo"].values[0]
         self.tilt = tilts.get(name, 1) if tilt_lookup else 1
         
 class Match:
@@ -134,7 +131,7 @@ class Match:
             print(f"Probabilities: Home {round(p_home*100)}% | Draw {round(p_draw*100)}% | Away {round(p_away*100)}%")
             print(f"Random draw: {round(roll, 3)} → Result: {self.result.capitalize()}")
 
-    def simulate_goals(self, base_goals=mean_goals):
+    def simulate_goals(self, base_goals=MEAN_GOALS):
         """Simulate realistic scorelines using tilt logic"""
         # Step 1: Expected total goals
         exp_total_goals = self.home.tilt * self.away.tilt * base_goals

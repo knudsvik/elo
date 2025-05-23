@@ -1,13 +1,12 @@
 import requests
-from bs4 import BeautifulSoup
 import pandas as pd
 from collections import defaultdict
+from const import CLUBS
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 api_key = os.getenv("RAPID_API_KEY")
-
 url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 
 seasons = ["2022", "2023", "2024", "2025"]
@@ -57,6 +56,11 @@ for season in seasons:
 int_columns = ["id", "season", "home_goals", "away_goals"]
 fixtures[int_columns] = fixtures[int_columns].astype("Int64")
 fixtures["date"] = pd.to_datetime(fixtures["date"], errors="coerce")
+
+# Fix club names
+variant_to_standard = {variant: standard for standard, variants in CLUBS.items() for variant in variants}
+fixtures["home"] = fixtures["home"].apply(lambda x: variant_to_standard.get(x, x))
+fixtures["away"] = fixtures["away"].apply(lambda x: variant_to_standard.get(x, x))
 
 def compute_initial_tilts(fixtures_df, base_goals=False, max_matches=50):
 
