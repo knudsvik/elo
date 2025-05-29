@@ -8,10 +8,18 @@ def build_league_table(results_df):
     # 1. Filter only completed matches
     results_df = results_df.dropna(subset=["home_goals", "away_goals"])
 
-    table = defaultdict(lambda: {
-        "Games": 0, "Wins": 0, "Draws": 0, "Losses": 0,
-        "GF": 0, "GA": 0, "GD": 0, "Points": 0
-    })
+    table = defaultdict(
+        lambda: {
+            "Games": 0,
+            "Wins": 0,
+            "Draws": 0,
+            "Losses": 0,
+            "GF": 0,
+            "GA": 0,
+            "GD": 0,
+            "Points": 0,
+        }
+    )
 
     for _, row in results_df.iterrows():
         home, away = row["home"], row["away"]
@@ -48,14 +56,10 @@ def build_league_table(results_df):
     # Convert to DataFrame
     df_table = pd.DataFrame.from_dict(table, orient="index")
     df_table.index.name = "Team"
-    df_table = (
-        df_table
-        .sort_values(["Points", "GD", "GF"], ascending=False)
-        .reset_index()
-    )
-    df_table["Goals"] = (
-        df_table["GF"].astype(str) + "-" + df_table["GA"].astype(str)
-    )
+    df_table = df_table.sort_values(
+        ["Points", "GD", "GF"], ascending=False
+    ).reset_index()
+    df_table["Goals"] = df_table["GF"].astype(str) + "-" + df_table["GA"].astype(str)
     df_table.insert(0, "Position", range(1, len(df_table) + 1))
 
     int_columns = ["Games", "Wins", "Draws", "Losses", "GD", "Points"]
@@ -65,8 +69,17 @@ def build_league_table(results_df):
 
     df_table = df_table[
         [
-            "Position", "Team", "Games", "Wins", "Draws", "Losses",
-            "Goals", "GD", "Points", "GF", "GA"
+            "Position",
+            "Team",
+            "Games",
+            "Wins",
+            "Draws",
+            "Losses",
+            "Goals",
+            "GD",
+            "Points",
+            "GF",
+            "GA",
         ]
     ]
 

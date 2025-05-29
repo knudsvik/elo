@@ -13,6 +13,7 @@ tqdm.pandas()
 
 position_counts = defaultdict(lambda: defaultdict(int))
 
+
 def simulate_match(home, away, n=1000, hfa=HFA, simulate_goals=True):
     results = {"home": 0, "draw": 0, "away": 0}
     scores = defaultdict(int)
@@ -43,7 +44,15 @@ def simulate_match(home, away, n=1000, hfa=HFA, simulate_goals=True):
 
     return results
 
-def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=2025, simulate_goals=True, elo_updates=True):
+
+def simulate_season(
+    fixtures_df,
+    n_simulations=1000,
+    cutoff_date=None,
+    season=2025,
+    simulate_goals=True,
+    elo_updates=True,
+):
     if cutoff_date is None:
         cutoff_date = datetime.max.replace(tzinfo=timezone.utc)
 
@@ -52,23 +61,27 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
     # Split played and unplayed fixtures
     played = fixtures_df[~fixtures_df["home_goals"].isna()]
     to_simulate = fixtures_df[
-        (fixtures_df["home_goals"].isna()) &
-        (fixtures_df["date"].notna()) &
-        (fixtures_df["date"] <= cutoff_date)
+        (fixtures_df["home_goals"].isna())
+        & (fixtures_df["date"].notna())
+        & (fixtures_df["date"] <= cutoff_date)
     ]
 
-    stats_tracker = defaultdict(lambda: {
-        "Wins": [],
-        "Draws": [],
-        "Losses": [],
-        "GF": [],
-        "GA": [],
-        "Points": [],
-    })
+    stats_tracker = defaultdict(
+        lambda: {
+            "Wins": [],
+            "Draws": [],
+            "Losses": [],
+            "GF": [],
+            "GA": [],
+            "Points": [],
+        }
+    )
 
     position_counts = defaultdict(lambda: defaultdict(int))
 
-    print(f'{len(played)} games have been played. Starting {n_simulations} simulations of {len(to_simulate)} games.')
+    print(
+        f"{len(played)} games have been played. Starting {n_simulations} simulations of {len(to_simulate)} games."
+    )
 
     for _ in tqdm(range(n_simulations), desc="Simulating seasons", leave=True):
         simulated_fixtures = played.copy()
@@ -87,7 +100,7 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
                     home_goals, away_goals = 1, 2
                 else:
                     home_goals = away_goals = 1
-            
+
             if elo_updates:
                 match.apply_elo_exchange()
 
@@ -95,7 +108,9 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
             sim_row["home_goals"] = home_goals
             sim_row["away_goals"] = away_goals
 
-            simulated_fixtures = pd.concat([simulated_fixtures, sim_row.to_frame().T], ignore_index=True)
+            simulated_fixtures = pd.concat(
+                [simulated_fixtures, sim_row.to_frame().T], ignore_index=True
+            )
 
         # Build table
         league_table = build_league_table(simulated_fixtures)
@@ -114,8 +129,9 @@ def simulate_season(fixtures_df, n_simulations=1000, cutoff_date=None, season=20
 
     return stats_tracker, position_counts
 
+
 def build_season_summary(stats_tracker, position_counts, use_median=False):
-    
+
     def summarize(values):
         if use_median:
             return int(np.median(values))
@@ -124,32 +140,59 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
 
     final_stats = []
     for team, stats in stats_tracker.items():
-        total_games_per_sim = [w + d + l for w, d, l in zip(stats["Wins"], stats["Draws"], stats["Losses"])]
-        final_stats.append({
-            "Team": team,
-            "Games": summarize(total_games_per_sim),
-            "Exp Wins": summarize(stats["Wins"]),
-            "Exp Draws": summarize(stats["Draws"]),
-            "Exp Losses": summarize(stats["Losses"]),
-            "Exp GF": summarize(stats["GF"]),
-            "Exp GA": summarize(stats["GA"]),
-            "Exp Points": summarize(stats["Points"]),
-        })
+        total_games_per_sim = [
+            w + d + l for w, d, l in zip(stats["Wins"], stats["Draws"], stats["Losses"])
+        ]
+        final_stats.append(
+            {
+                "Team": team,
+                "Games": summarize(total_games_per_sim),
+                "Exp Wins": summarize(stats["Wins"]),
+                "Exp Draws": summarize(stats["Draws"]),
+                "Exp Losses": summarize(stats["Losses"]),
+                "Exp GF": summarize(stats["GF"]),
+                "Exp GA": summarize(stats["GA"]),
+                "Exp Points": summarize(stats["Points"]),
+            }
+        )
 
     df_summary = pd.DataFrame(final_stats)
-    df_summary = df_summary.sort_values("Exp Points", ascending=False).reset_index(drop=True)
+    df_summary = df_summary.sort_values("Exp Points", ascending=False).reset_index(
+        drop=True
+    )
     df_summary.insert(0, "Position", range(1, len(df_summary) + 1))
     df_summary = df_summary.sort_values(
-        ["Exp Points", "Exp GF", "Exp GA"],
-        ascending=[False, False, True]
-        ).reset_index(drop=True)
-    
-    df_summary["Goals"] = df_summary["Exp GF"].astype(str) + "-" + df_summary["Exp GA"].astype(str)
+        ["Exp Points", "Exp GF", "Exp GA"], ascending=[False, False, True]
+    ).reset_index(drop=True)
+
+    df_summary["Goals"] = (
+        df_summary["Exp GF"].astype(str) + "-" + df_summary["Exp GA"].astype(str)
+    )
     df_summary = df_summary.drop(columns=["Exp GF", "Exp GA"])
 
-    df_summary = df_summary[["Position", "Team", "Games", "Exp Wins", "Exp Draws", "Exp Losses", "Goals", "Exp Points"]]
+    df_summary = df_summary[
+        [
+            "Position",
+            "Team",
+            "Games",
+            "Exp Wins",
+            "Exp Draws",
+            "Exp Losses",
+            "Goals",
+            "Exp Points",
+        ]
+    ]
     if use_median:
-        df_summary.columns = ["Position", "Team", "Games", "Wins", "Draws", "Losses", "Goals", "Points"]
+        df_summary.columns = [
+            "Position",
+            "Team",
+            "Games",
+            "Wins",
+            "Draws",
+            "Losses",
+            "Goals",
+            "Points",
+        ]
 
     # Position probabilities (always expected %)
     position_df = pd.DataFrame(position_counts).T.fillna(0)
@@ -157,7 +200,9 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
     position_df = position_df.round(2)
 
     # Sort columns numerically
-    position_df = position_df.reindex(sorted(position_df.columns, key=lambda x: int(x)), axis=1)
+    position_df = position_df.reindex(
+        sorted(position_df.columns, key=lambda x: int(x)), axis=1
+    )
 
     # Align teams
     position_df = position_df.loc[df_summary["Team"]]

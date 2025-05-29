@@ -16,30 +16,29 @@ fixtures = pd.DataFrame()
 
 headers = {
     "X-RapidAPI-Key": api_key,
-    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
+    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
 }
 
 for season in seasons:
-    querystring = {
-    "league": "103",       # Eliteserien
-    "season": season}
-    
+    querystring = {"league": "103", "season": season}  # Eliteserien
+
     response = requests.get(url, headers=headers, params=querystring)
     data = response.json()
 
     matches = []
 
-    for match in data['response']:
-        date = match['fixture']['date']
-        id = match['fixture']['id']
-        status = match['fixture']['status']['short']
-        venue = match['fixture']['venue']['name']
-        home_goals = match['goals']['home']
-        away_goals = match['goals']['away']
-        home = match['teams']['home']['name']
-        away = match['teams']['away']['name']
+    for match in data["response"]:
+        date = match["fixture"]["date"]
+        id = match["fixture"]["id"]
+        status = match["fixture"]["status"]["short"]
+        venue = match["fixture"]["venue"]["name"]
+        home_goals = match["goals"]["home"]
+        away_goals = match["goals"]["away"]
+        home = match["teams"]["home"]["name"]
+        away = match["teams"]["away"]["name"]
 
-        matches.append({
+        matches.append(
+            {
                 "id": id,
                 "season": season,
                 "date": date,
@@ -49,7 +48,8 @@ for season in seasons:
                 "away_goals": away_goals,
                 "venue": venue,
                 "status": status,
-            })
+            }
+        )
 
     # Add to DataFrame
     fixtures = pd.concat([fixtures, pd.DataFrame(matches)], ignore_index=True)
@@ -60,9 +60,12 @@ fixtures[int_columns] = fixtures[int_columns].astype("Int64")
 fixtures["date"] = pd.to_datetime(fixtures["date"], errors="coerce")
 
 # Fix club names
-variant_to_standard = {variant: standard for standard, variants in CLUBS.items() for variant in variants}
+variant_to_standard = {
+    variant: standard for standard, variants in CLUBS.items() for variant in variants
+}
 fixtures["home"] = fixtures["home"].apply(lambda x: variant_to_standard.get(x, x))
 fixtures["away"] = fixtures["away"].apply(lambda x: variant_to_standard.get(x, x))
+
 
 def compute_initial_tilts(fixtures_df, base_goals=False, max_matches=50):
 
@@ -116,5 +119,6 @@ def compute_initial_tilts(fixtures_df, base_goals=False, max_matches=50):
             team_tilt_raw[team] = 1.0  # fallback
 
     return team_tilt_raw
+
 
 tilts = compute_initial_tilts(fixtures)

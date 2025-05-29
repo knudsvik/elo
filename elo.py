@@ -17,6 +17,7 @@ r = requests.get(f"http://api.clubelo.com/{today}")
 data = StringIO(r.text)
 df_elo = pd.read_csv(data, sep=",")
 
+
 # Standardise club names
 variant_to_standard = {
     variant: standard for standard, variants in CLUBS.items() for variant in variants
