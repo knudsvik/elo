@@ -1,5 +1,7 @@
 from collections import defaultdict
+
 import pandas as pd
+
 
 def build_league_table(results_df):
 

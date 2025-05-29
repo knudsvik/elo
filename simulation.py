@@ -1,11 +1,13 @@
-import numpy as np
-from table import build_league_table
-from elo import Match
 from collections import defaultdict
-import pandas as pd
 from datetime import datetime, timezone
+
+import numpy as np
+import pandas as pd
 from tqdm.notebook import tqdm
+
 from const import HFA
+from elo import Match
+from table import build_league_table
 
 tqdm.pandas()
 

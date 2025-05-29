@@ -1,10 +1,12 @@
-import pandas as pd
 import random
-import requests
 from datetime import date
 from io import StringIO
-from const import CLUBS, HFA, MEAN_GOALS
+
 import numpy as np
+import pandas as pd
+import requests
+
+from const import CLUBS, HFA, MEAN_GOALS
 from fixtures import tilts
 
 DEBUG = False

@@ -1,9 +1,11 @@
-import requests
-import pandas as pd
-from collections import defaultdict
-from const import CLUBS
-from dotenv import load_dotenv
 import os
+from collections import defaultdict
+
+import pandas as pd
+import requests
+from dotenv import load_dotenv
+
+from const import CLUBS
 
 load_dotenv()
 api_key = os.getenv("RAPID_API_KEY")
