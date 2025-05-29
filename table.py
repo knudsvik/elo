@@ -48,11 +48,14 @@ def build_league_table(results_df):
     # Convert to DataFrame
     df_table = pd.DataFrame.from_dict(table, orient="index")
     df_table.index.name = "Team"
-    df_table = df_table.sort_values(["Points", "GD", "GF"], ascending=False).reset_index()
-
-    df_table["Goals"] = df_table["GF"].astype(str) + "-" + df_table["GA"].astype(str)
-    #df_table = df_table.drop(columns=["GF", "GA"])
-
+    df_table = (
+        df_table
+        .sort_values(["Points", "GD", "GF"], ascending=False)
+        .reset_index()
+    )
+    df_table["Goals"] = (
+        df_table["GF"].astype(str) + "-" + df_table["GA"].astype(str)
+    )
     df_table.insert(0, "Position", range(1, len(df_table) + 1))
 
     int_columns = ["Games", "Wins", "Draws", "Losses", "GD", "Points"]
@@ -60,6 +63,11 @@ def build_league_table(results_df):
 
     df_table["GD"] = df_table["GD"].apply(lambda x: f"+{x}" if x > 0 else str(x))
 
-    df_table = df_table[["Position", "Team", "Games", "Wins", "Draws", "Losses", "Goals", "GD", "Points", "GF", "GA"]]
+    df_table = df_table[
+        [
+            "Position", "Team", "Games", "Wins", "Draws", "Losses",
+            "Goals", "GD", "Points", "GF", "GA"
+        ]
+    ]
 
     return df_table

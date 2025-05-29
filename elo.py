@@ -13,24 +13,36 @@ DEBUG = False
 
 # Fetch latest one-day ELO rankings:
 today = date.today()
-r = requests.get(f'http://api.clubelo.com/{today}')
+r = requests.get(f"http://api.clubelo.com/{today}")
 data = StringIO(r.text)
 df_elo = pd.read_csv(data, sep=",")
 
-#Standardise club names
-variant_to_standard = {variant: standard for standard, variants in CLUBS.items() for variant in variants}
-df_elo['Club'] = df_elo['Club'].apply(lambda x: variant_to_standard.get(x, x))
+# Standardise club names
+variant_to_standard = {
+    variant: standard for standard, variants in CLUBS.items() for variant in variants
+}
+df_elo["Club"] = df_elo["Club"].apply(lambda x: variant_to_standard.get(x, x))
+
 
 class Club:
 
     def __init__(self, name, tilt_lookup=True):
         self.name = name
-        self.elo = df_elo.loc[df_elo['Club'] == self.name]["Elo"].values[0]
+        self.elo = df_elo.loc[df_elo["Club"] == self.name]["Elo"].values[0]
         self.tilt = tilts.get(name, 1) if tilt_lookup else 1
-        
+
+
 class Match:
 
-    def __init__(self, home, away, home_goals=None, away_goals=None, home_advantage = HFA, noise=True):
+    def __init__(
+        self,
+        home,
+        away,
+        home_goals=None,
+        away_goals=None,
+        home_advantage=HFA,
+        noise=True,
+    ):
         self.hfa = home_advantage
         self.home = Club(home)
         self.away = Club(away)
@@ -39,25 +51,35 @@ class Match:
         self.away_goals = away_goals
 
         self.dr = self.home.elo + self.hfa - self.away.elo
-        
+
         if noise:
             self.dr += np.random.normal(0, 15)  # ~15 ELO points
 
         self.elo = 1 / (10 ** (-self.dr / 400) + 1)
 
         if DEBUG:
-            print(f"The {self.home.name} vs {self.away.name} game has been initialised.")
-            print(f"The ELO of home team, {self.home.name}, before match is: {round(self.home.elo, 1)}")
-            print(f"The ELO of away team, {self.away.name}, before match is: {round(self.away.elo, 1)}")
+            print(
+                f"The {self.home.name} vs {self.away.name} game has been initialised."
+            )
+            print(
+                f"The ELO of home team, {self.home.name}, before match is: {round(self.home.elo, 1)}"
+            )
+            print(
+                f"The ELO of away team, {self.away.name}, before match is: {round(self.away.elo, 1)}"
+            )
             print(f"The ELO difference is: {round(self.dr, 1)}")
-            print(f"The Calculated expected score for home team is: {round(self.elo, 2)}")
+            print(
+                f"The Calculated expected score for home team is: {round(self.elo, 2)}"
+            )
 
         # Only do result logic if real goals were provided
         if self.home_goals is not None and self.away_goals is not None:
             self.set_result_from_goals()
             self.expected_elo_exchange()
             if DEBUG:
-                print(f"Expected ELO exchange points for a {self.home.name} win: {self.expected_elo_exchange}")
+                print(
+                    f"Expected ELO exchange points for a {self.home.name} win: {self.expected_elo_exchange}"
+                )
 
     def set_result_from_goals(self):
         if self.home_goals == self.away_goals:
@@ -68,21 +90,20 @@ class Match:
             self.result = "away"
 
     def expected_elo_exchange(self, k=20):
-        '''
+        """
         Updates the elo after a game
         Points exchange (from http://clubelo.com/System)
         result: home, draw or away
         result: 1 for win, 0.5 for draw, 0 for loss
-        '''
+        """
         if self.result == "draw":
-            R = .5
+            R = 0.5
         elif self.result == "home":
             R = 1
         elif self.result == "away":
             R = 0
 
         self.expected_elo_exchange = (R - self.elo) * k
-
 
     def apply_elo_exchange(self, k=20):
         if self.result == "draw":
@@ -98,8 +119,6 @@ class Match:
 
         self.home.elo += exchange
         self.away.elo -= exchange
-
-
 
     def simulate_result(self):
 
@@ -130,7 +149,9 @@ class Match:
 
         if DEBUG:
             print(f"Simulated match result: {self.home.name} vs {self.away.name}")
-            print(f"Probabilities: Home {round(p_home*100)}% | Draw {round(p_draw*100)}% | Away {round(p_away*100)}%")
+            print(
+                f"Probabilities: Home {round(p_home*100)}% | Draw {round(p_draw*100)}% | Away {round(p_away*100)}%"
+            )
             print(f"Random draw: {round(roll, 3)} → Result: {self.result.capitalize()}")
 
     def simulate_goals(self, base_goals=MEAN_GOALS):
@@ -152,31 +173,45 @@ class Match:
         self.set_result_from_goals()
 
         if DEBUG:
-            print(f"Simulated score: {self.home.name} {self.home_goals} - {self.away_goals} {self.away.name}")
+            print(
+                f"Simulated score: {self.home.name} {self.home_goals} - {self.away_goals} {self.away.name}"
+            )
 
     ## NOT IN USE YET
     def elo_exchange_margin(self, p_margin):
-        '''
+        """
         Weighting goal difference
         p_margin: likelyhood for a specific margin
         p_1X2: the likelyhood to win (or lose) by any margin.
-        '''
-        elo_1goal = self.expected_elo_exchange / sum( margin**(1/2) * p_margin / p_1X2)
-        
-        self.elo_points_margin = elo_1goal * margin**(1/2)
+        """
+        elo_1goal = self.expected_elo_exchange / sum(
+            margin ** (1 / 2) * p_margin / p_1X2
+        )
 
-        return print(f"ELO exchange points for home team due to margin: {self.elo_points_margin}")
+        self.elo_points_margin = elo_1goal * margin ** (1 / 2)
+
+        return print(
+            f"ELO exchange points for home team due to margin: {self.elo_points_margin}"
+        )
 
     ## NOT IN USE YET
     def update_tilt(self, exp_game_total_goals, game_total_goals):
-        '''
+        """
         Updates tilt after a game
         Tilt is designed to be a measure of offensiveness
         from http://clubelo.com/System
-        '''
-        self.home.tilt = 0.98 * self.home.tilt + 0.02 * game_total_goals / self.away.tilt / exp_game_total_goals
-        self.away.tilt = 0.98 * self.away.tilt + 0.02 * game_total_goals / self.home.tilt / exp_game_total_goals
-        return print(f"The tilts have been updated, new home team tilt: {self.home.tilt}, new away team tilt: {self.away.tilt}")
+        """
+        self.home.tilt = (
+            0.98 * self.home.tilt
+            + 0.02 * game_total_goals / self.away.tilt / exp_game_total_goals
+        )
+        self.away.tilt = (
+            0.98 * self.away.tilt
+            + 0.02 * game_total_goals / self.home.tilt / exp_game_total_goals
+        )
+        return print(
+            f"The tilts have been updated, new home team tilt: {self.home.tilt}, new away team tilt: {self.away.tilt}"
+        )
 
 
 def draw_probability(delta_elo):

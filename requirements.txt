@@ -6,3 +6,6 @@ pandas
 python-dotenv
 requests
 tqdm
+flake8
+black
+isort
