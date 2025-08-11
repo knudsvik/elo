@@ -1,18 +1,15 @@
 import random
-from datetime import date
-from io import StringIO
 
 import numpy as np
-import pandas as pd
-import requests
 
-from const import CLUBS, HFA, MEAN_GOALS
+from const import HFA, MEAN_GOALS
 from fetch_elo import fetch_elo_data
 from fixtures import tilts
 
 DEBUG = False
 
 df_elo = fetch_elo_data()
+
 
 class Club:
 
