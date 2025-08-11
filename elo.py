@@ -7,23 +7,12 @@ import pandas as pd
 import requests
 
 from const import CLUBS, HFA, MEAN_GOALS
+from fetch_elo import fetch_elo_data
 from fixtures import tilts
 
 DEBUG = False
 
-# Fetch latest one-day ELO rankings:
-today = date.today()
-r = requests.get(f"http://api.clubelo.com/{today}")
-data = StringIO(r.text)
-df_elo = pd.read_csv(data, sep=",")
-
-
-# Standardise club names
-variant_to_standard = {
-    variant: standard for standard, variants in CLUBS.items() for variant in variants
-}
-df_elo["Club"] = df_elo["Club"].apply(lambda x: variant_to_standard.get(x, x))
-
+df_elo = fetch_elo_data()
 
 class Club:
 
