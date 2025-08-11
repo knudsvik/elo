@@ -7,7 +7,11 @@ from fetch_elo import fetch_elo_data
 
 DEBUG = False
 
-df_elo = fetch_elo_data()
+elo_df = None
+
+def set_elo_df(df):
+    global elo_df
+    elo_df = df
 
 
 def set_tilts(tilts_dict):
@@ -19,7 +23,9 @@ class Club:
 
     def __init__(self, name, tilt_lookup=True):
         self.name = name
-        self.elo = df_elo.loc[df_elo["Club"] == self.name]["Elo"].values[0]
+        if elo_df is None:
+            raise ValueError("elo_df is not set. Use set_elo_df() before creating Club objects.")
+        self.elo = elo_df.loc[elo_df["Club"] == self.name]["Elo"].values[0]
         self.tilt = tilts.get(name, 1) if tilt_lookup else 1
 
 
