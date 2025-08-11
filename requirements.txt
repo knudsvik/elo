@@ -1,11 +1,13 @@
+black
 bs4
+fastparquet
+flake8
 ipywidgets
+isort
 matplotlib
 numpy
 pandas
+pyarrow 
 python-dotenv
 requests
 tqdm
-flake8
-black
-isort

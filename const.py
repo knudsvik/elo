@@ -25,3 +25,5 @@ CLUBS = {
 
 HFA = 61.2  # Home Field Advantage Norway (from ClubELO)
 MEAN_GOALS = 3.07  # mean scored goals from 2022-2025 in Eliteserien
+
+SEASONS = ["2022", "2023", "2024", "2025"]  # Seasons to fetch fixtures for

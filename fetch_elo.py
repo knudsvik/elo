@@ -1,12 +1,19 @@
 import pandas as pd
 import requests
+import os
 from io import StringIO
 from const import CLUBS
 
-def fetch_elo_data():
+
+def fetch_elo_data(cache_file="elo_latest.parquet", force_refresh=False):
     """Fetch ELO data for all clubs and return as DataFrame"""
+
+    if not force_refresh and os.path.exists(cache_file):
+        print(f"Loading ELO data from cache: {cache_file}")
+        return pd.read_parquet(cache_file)
+
     # Initialize list to store results
-    print("Fetching the latest ELO data from ClubELO API...")
+    print("Fetching the latest ELO data from ClubELO API")
     results = []
     
     for clubs in CLUBS.values():
@@ -56,11 +63,7 @@ def fetch_elo_data():
     }
     df_elo["Club"] = df_elo["Club"].apply(lambda x: variant_to_standard.get(x, x))
 
-    print("ELO data fetched successfully.")
+    df_elo.to_parquet(cache_file)
+    print(f"ELO data fetched and cached to {cache_file}")
     
     return df_elo
-
-# Optional: Create the DataFrame when script is run directly
-if __name__ == "__main__":
-    df_elo = fetch_elo_data()
-    print(df_elo)

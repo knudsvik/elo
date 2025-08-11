@@ -4,11 +4,15 @@ import numpy as np
 
 from const import HFA, MEAN_GOALS
 from fetch_elo import fetch_elo_data
-from fixtures import tilts
 
 DEBUG = False
 
 df_elo = fetch_elo_data()
+
+
+def set_tilts(tilts_dict):
+    global tilts
+    tilts = tilts_dict
 
 
 class Club:

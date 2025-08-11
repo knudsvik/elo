@@ -5,66 +5,84 @@ import pandas as pd
 import requests
 from dotenv import load_dotenv
 
-from const import CLUBS
+from const import CLUBS, SEASONS
 
-load_dotenv()
-api_key = os.getenv("RAPID_API_KEY")
-url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 
-seasons = ["2022", "2023", "2024", "2025"]
-fixtures = pd.DataFrame()
+def get_fixtures(seasons=SEASONS, cache_file="fixtures.parquet", force_refresh=False):
+    
+    """
+    Fetch fixtures for the specified seasons from the API.
+    Returns a DataFrame with fixture data.
+    """
 
-headers = {
-    "X-RapidAPI-Key": api_key,
-    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
-}
+    if not force_refresh and os.path.exists(cache_file):
+        print(f"Loading fixtures from cache: {cache_file}")
+        return pd.read_parquet(cache_file)
+    
+    print("Fetching the fixtures from api-football")
 
-for season in seasons:
-    querystring = {"league": "103", "season": season}  # Eliteserien
+    load_dotenv()
+    api_key = os.getenv("RAPID_API_KEY")
+    url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
 
-    response = requests.get(url, headers=headers, params=querystring)
-    data = response.json()
+    headers = {
+        "X-RapidAPI-Key": api_key,
+        "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com",
+    }
 
-    matches = []
+    fixtures = pd.DataFrame()
 
-    for match in data["response"]:
-        date = match["fixture"]["date"]
-        id = match["fixture"]["id"]
-        status = match["fixture"]["status"]["short"]
-        venue = match["fixture"]["venue"]["name"]
-        home_goals = match["goals"]["home"]
-        away_goals = match["goals"]["away"]
-        home = match["teams"]["home"]["name"]
-        away = match["teams"]["away"]["name"]
+    for season in seasons:
+        querystring = {"league": "103", "season": season}  # Eliteserien
 
-        matches.append(
-            {
-                "id": id,
-                "season": season,
-                "date": date,
-                "home": home,
-                "home_goals": home_goals,
-                "away": away,
-                "away_goals": away_goals,
-                "venue": venue,
-                "status": status,
-            }
-        )
+        response = requests.get(url, headers=headers, params=querystring)
+        data = response.json()
 
-    # Add to DataFrame
-    fixtures = pd.concat([fixtures, pd.DataFrame(matches)], ignore_index=True)
+        matches = []
 
-# Clean the data
-int_columns = ["id", "season", "home_goals", "away_goals"]
-fixtures[int_columns] = fixtures[int_columns].astype("Int64")
-fixtures["date"] = pd.to_datetime(fixtures["date"], errors="coerce")
+        for match in data["response"]:
+            date = match["fixture"]["date"]
+            id = match["fixture"]["id"]
+            status = match["fixture"]["status"]["short"]
+            venue = match["fixture"]["venue"]["name"]
+            home_goals = match["goals"]["home"]
+            away_goals = match["goals"]["away"]
+            home = match["teams"]["home"]["name"]
+            away = match["teams"]["away"]["name"]
 
-# Fix club names
-variant_to_standard = {
-    variant: standard for standard, variants in CLUBS.items() for variant in variants
-}
-fixtures["home"] = fixtures["home"].apply(lambda x: variant_to_standard.get(x, x))
-fixtures["away"] = fixtures["away"].apply(lambda x: variant_to_standard.get(x, x))
+            matches.append(
+                {
+                    "id": id,
+                    "season": season,
+                    "date": date,
+                    "home": home,
+                    "home_goals": home_goals,
+                    "away": away,
+                    "away_goals": away_goals,
+                    "venue": venue,
+                    "status": status,
+                }
+            )
+
+        # Add to DataFrame
+        fixtures = pd.concat([fixtures, pd.DataFrame(matches)], ignore_index=True)
+
+    # Clean the data
+    int_columns = ["id", "season", "home_goals", "away_goals"]
+    fixtures[int_columns] = fixtures[int_columns].astype("Int64")
+    fixtures["date"] = pd.to_datetime(fixtures["date"], errors="coerce")
+
+    # Fix club names
+    variant_to_standard = {
+        variant: standard for standard, variants in CLUBS.items() for variant in variants
+    }
+    fixtures["home"] = fixtures["home"].apply(lambda x: variant_to_standard.get(x, x))
+    fixtures["away"] = fixtures["away"].apply(lambda x: variant_to_standard.get(x, x))
+
+    fixtures.to_parquet(cache_file)
+    print(f"Fixtures fetched successfully and cached to {cache_file}.")
+
+    return fixtures
 
 
 def compute_initial_tilts(fixtures_df, base_goals=False, max_matches=50):
@@ -119,6 +137,3 @@ def compute_initial_tilts(fixtures_df, base_goals=False, max_matches=50):
             team_tilt_raw[team] = 1.0  # fallback
 
     return team_tilt_raw
-
-
-tilts = compute_initial_tilts(fixtures)
