@@ -6,7 +6,7 @@ import pandas as pd
 def build_league_table(results_df):
 
     # 1. Filter only completed matches
-    results_df = results_df.dropna(subset=["home_goals", "away_goals"])
+    results_df = results_df[results_df["status"].isin(["FT", "PEN"])]
 
     table = defaultdict(
         lambda: {

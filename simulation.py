@@ -59,9 +59,9 @@ def simulate_season(
     fixtures_df = fixtures_df.loc[fixtures_df.season == season]
 
     # Split played and unplayed fixtures
-    played = fixtures_df[~fixtures_df["home_goals"].isna()]
+    played = fixtures_df[fixtures_df["status"].isin(["FT", "PEN"])]
     to_simulate = fixtures_df[
-        (fixtures_df["home_goals"].isna())
+        (~fixtures_df["status"].isin(["FT", "PEN"]))
         & (fixtures_df["date"].notna())
         & (fixtures_df["date"] <= cutoff_date)
     ]
