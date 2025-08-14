@@ -79,11 +79,22 @@ def simulate_season(
 
     position_counts = defaultdict(lambda: defaultdict(int))
 
+    # Save original ELO dataframe if we're doing ELO updates
+    original_elo_df = None
+    if elo_updates:
+        from elo import elo_df
+        original_elo_df = elo_df.copy()
+
     print(
         f"{len(played)} games have been played. Starting {n_simulations} simulations of {len(to_simulate)} games."
     )
 
     for _ in tqdm(range(n_simulations), desc="Simulating seasons", leave=True):
+        # Restore original ELO dataframe at the start of each simulation
+        if elo_updates:
+            from elo import set_elo_df
+            set_elo_df(original_elo_df.copy())
+        
         simulated_fixtures = played.copy()
 
         for _, row in to_simulate.iterrows():
@@ -107,12 +118,13 @@ def simulate_season(
             sim_row = row.copy()
             sim_row["home_goals"] = home_goals
             sim_row["away_goals"] = away_goals
+            sim_row["status"] = "FT"  # Mark simulated games as finished
 
             simulated_fixtures = pd.concat(
                 [simulated_fixtures, sim_row.to_frame().T], ignore_index=True
             )
 
-        # Build table
+        # Build league table and update stats
         league_table = build_league_table(simulated_fixtures)
 
         for _, row in league_table.iterrows():
