@@ -86,7 +86,8 @@ def simulate_season(
         original_elo_df = elo_df.copy()
 
     print(
-        f"{len(played)} games have been played. Starting {n_simulations} simulations of {len(to_simulate)} games."
+        f"{len(played)} games have been played. Starting {n_simulations} "
+        f"simulations of {len(to_simulate)} games."
     )
 
     for _ in tqdm(range(n_simulations), desc="Simulating seasons", leave=True):
@@ -153,7 +154,9 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
     final_stats = []
     for team, stats in stats_tracker.items():
         total_games_per_sim = [
-            w + d + l for w, d, l in zip(stats["Wins"], stats["Draws"], stats["Losses"])
+            w + d + losses
+            for w, d, losses in zip(stats["Wins"], stats["Draws"],
+                                    stats["Losses"])
         ]
         final_stats.append(
             {
@@ -169,16 +172,16 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
         )
 
     df_summary = pd.DataFrame(final_stats)
-    df_summary = df_summary.sort_values("Exp Points", ascending=False).reset_index(
-        drop=True
-    )
+    df_summary = df_summary.sort_values("Exp Points",
+                                        ascending=False).reset_index(drop=True)
     df_summary.insert(0, "Position", range(1, len(df_summary) + 1))
     df_summary = df_summary.sort_values(
         ["Exp Points", "Exp GF", "Exp GA"], ascending=[False, False, True]
     ).reset_index(drop=True)
 
     df_summary["Goals"] = (
-        df_summary["Exp GF"].astype(str) + "-" + df_summary["Exp GA"].astype(str)
+        df_summary["Exp GF"].astype(str) + "-" +
+        df_summary["Exp GA"].astype(str)
     )
     df_summary = df_summary.drop(columns=["Exp GF", "Exp GA"])
 
@@ -208,7 +211,8 @@ def build_season_summary(stats_tracker, position_counts, use_median=False):
 
     # Position probabilities (always expected %)
     position_df = pd.DataFrame(position_counts).T.fillna(0)
-    position_df = position_df.apply(lambda row: (row / row.sum()) * 100, axis=1)
+    position_df = position_df.apply(
+        lambda row: (row / row.sum()) * 100, axis=1)
     position_df = position_df.round(2)
 
     # Sort columns numerically
