@@ -95,7 +95,7 @@ def simulate_season(
         if elo_updates:
             from elo import set_elo_df
             set_elo_df(original_elo_df.copy())
-        
+
         simulated_fixtures = played.copy()
 
         for _, row in to_simulate.iterrows():

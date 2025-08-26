@@ -29,7 +29,7 @@ def create_comprehensive_table(table_mean, position_probs, stats_tracker,
     """
     # Start with the expected points table
     summary_df = table_mean[['Team', 'Exp Points']].copy()
-    
+
     # Add current ELO ratings
     elo_ratings = []
     for team in summary_df['Team']:
@@ -74,7 +74,7 @@ def create_comprehensive_table(table_mean, position_probs, stats_tracker,
                                                     fill_value=0)
             rel_prob += reindexed.values
     summary_df['Relegation Prob (%)'] = rel_prob
-    
+
     # Calculate under/overperformance (expected final position vs ELO ranking)
     # First, create ELO ranking for ONLY Eliteserien teams
     eliteserien_teams = summary_df['Team'].tolist()
@@ -99,7 +99,7 @@ def create_comprehensive_table(table_mean, position_probs, stats_tracker,
         position_diff_data.append(diff)
 
     summary_df['Position Diff'] = position_diff_data
-    
+
     # Calculate uncertainty (standard deviation of points)
     uncertainty_data = []
     for team in summary_df['Team']:
@@ -108,9 +108,9 @@ def create_comprehensive_table(table_mean, position_probs, stats_tracker,
             uncertainty_data.append(points_std)
         else:
             uncertainty_data.append(0.0)
-    
+
     summary_df['Uncertainty'] = uncertainty_data
-    
+
     # Round all percentage columns and ensure no NaN values
     prob_columns = ['CL Prob (%)', 'Europe League Prob (%)',
                     'Conference Prob (%)', 'Relegation Prob (%)']
@@ -154,16 +154,16 @@ def display_comprehensive_analysis(comprehensive_table, iterations=None):
         iterations: Number of iterations used in simulation (optional)
     """
     from IPython.display import display
-    
+
     if iterations:
         title = (f"ELITESERIEN 2025 - SIMULATION "
                  f"({iterations} iterations)")
     else:
         title = "ELITESERIEN 2025 - SIMULATION"
-    
+
     print(title)
     print("=" * len(title))
-    
+
     # Display table without index since we have a Rank column
     from IPython.display import HTML
     display(HTML(comprehensive_table.to_html(index=False)))
