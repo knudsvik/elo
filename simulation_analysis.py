@@ -29,55 +29,69 @@ def create_comprehensive_table(table_mean, position_probs, stats_tracker,
     """
     # Start with the expected points table
     summary_df = table_mean[['Team', 'Exp Points']].copy()
+    
+    # Rename columns to Norwegian
+    summary_df = summary_df.rename(columns={
+        'Team': 'Lag',
+        'Exp Points': 'Forventede poeng'
+    })
 
     # Add current ELO ratings
     elo_ratings = []
-    for team in summary_df['Team']:
+    for team in summary_df['Lag']:
         team_elo_query = elo_df[elo_df['Club'] == team]['Elo']
         team_elo = team_elo_query.iloc[0] if len(team_elo_query) > 0 else 0
         elo_ratings.append(team_elo)
     summary_df['Current ELO'] = elo_ratings
 
     # Add probabilities for different positions
+    # Champion (1st place only)
+    if 1 in position_probs.columns:
+        champion_prob = position_probs[1].reindex(summary_df['Lag'],
+                                                  fill_value=0).values
+    else:
+        champion_prob = pd.Series(0.0, index=summary_df.index)
+    summary_df['Vinner (%)'] = champion_prob
+
     # Champions League (1st and 2nd place)
     cl_prob = pd.Series(0.0, index=summary_df.index)
     for pos in [1, 2]:
         if pos in position_probs.columns:
-            reindexed = position_probs[pos].reindex(summary_df['Team'],
+            reindexed = position_probs[pos].reindex(summary_df['Lag'],
                                                     fill_value=0)
             cl_prob += reindexed.values
-    summary_df['CL Prob (%)'] = cl_prob
+    summary_df['CL (%)'] = cl_prob
 
     # Europe League (1st, 2nd, or 3rd place - cumulative)
     europe_prob = pd.Series(0.0, index=summary_df.index)
     for pos in [1, 2, 3]:
         if pos in position_probs.columns:
-            reindexed = position_probs[pos].reindex(summary_df['Team'],
+            reindexed = position_probs[pos].reindex(summary_df['Lag'],
                                                     fill_value=0)
             europe_prob += reindexed.values
-    summary_df['Europe League Prob (%)'] = europe_prob
+    summary_df['Europa League (%)'] = europe_prob
 
     # Conference League (1st, 2nd, 3rd, or 4th place - cumulative)
     conference_prob = pd.Series(0.0, index=summary_df.index)
     for pos in [1, 2, 3, 4]:
         if pos in position_probs.columns:
-            reindexed = position_probs[pos].reindex(summary_df['Team'],
+            reindexed = position_probs[pos].reindex(summary_df['Lag'],
                                                     fill_value=0)
             conference_prob += reindexed.values
-    summary_df['Conference Prob (%)'] = conference_prob
+    summary_df['Conference League (%)'] = conference_prob
 
     # Relegation (15th and 16th place)
     rel_prob = pd.Series(0.0, index=summary_df.index)
     for pos in [15, 16]:
         if pos in position_probs.columns:
-            reindexed = position_probs[pos].reindex(summary_df['Team'],
+            reindexed = position_probs[pos].reindex(summary_df['Lag'],
                                                     fill_value=0)
             rel_prob += reindexed.values
-    summary_df['Relegation Prob (%)'] = rel_prob
+    summary_df['Nedrykk (%)'] = rel_prob
 
     # Calculate under/overperformance (expected final position vs ELO ranking)
     # First, create ELO ranking for ONLY Eliteserien teams
-    eliteserien_teams = summary_df['Team'].tolist()
+    eliteserien_teams = summary_df['Lag'].tolist()
     elo_subset = elo_df[elo_df['Club'].isin(eliteserien_teams)]
     elo_ranking = elo_subset[['Club', 'Elo']].copy()
     elo_ranking = elo_ranking.sort_values('Elo', ascending=False)
@@ -91,87 +105,60 @@ def create_comprehensive_table(table_mean, position_probs, stats_tracker,
     # Positive = expected to finish better than ELO ranking suggests
     # Negative = expected to finish worse than ELO ranking suggests
     position_diff_data = []
-    for team in summary_df['Team']:
+    for team in summary_df['Lag']:
         elo_rank = elo_rank_dict.get(team, 16)  # Default to last if not found
         team_data = table_mean[table_mean['Team'] == team]['Position']
         expected_pos = team_data.iloc[0]
         diff = elo_rank - expected_pos  # Positive = outperforming ELO
         position_diff_data.append(diff)
 
-    summary_df['Position Diff'] = position_diff_data
+    summary_df['Posisjon diff'] = position_diff_data
 
     # Calculate uncertainty (standard deviation of points)
     uncertainty_data = []
-    for team in summary_df['Team']:
+    for team in summary_df['Lag']:
         if team in stats_tracker and len(stats_tracker[team]['Points']) > 0:
             points_std = np.std(stats_tracker[team]['Points'])
             uncertainty_data.append(points_std)
         else:
             uncertainty_data.append(0.0)
 
-    summary_df['Uncertainty'] = uncertainty_data
+    summary_df['Usikkerhet'] = uncertainty_data
 
     # Round all percentage columns and ensure no NaN values
-    prob_columns = ['CL Prob (%)', 'Europe League Prob (%)',
-                    'Conference Prob (%)', 'Relegation Prob (%)']
+    prob_columns = ['Vinner (%)', 'CL (%)',
+                    'Europa League (%)', 'Conference League (%)',
+                    'Nedrykk (%)']
     for col in prob_columns:
         summary_df[col] = summary_df[col].fillna(0).round(1)
 
     # Round other numeric columns and handle NaN
-    summary_df['Exp Points'] = summary_df['Exp Points'].fillna(0).round(1)
+    summary_df['Forventede poeng'] = (summary_df['Forventede poeng']
+                                      .fillna(0).round(1))
     elo_series = pd.Series(elo_ratings).fillna(0).round(0).astype(int)
-    summary_df['Current ELO'] = elo_series
+    summary_df['Nåværende ELO'] = elo_series
     pos_diff_series = pd.Series(position_diff_data).fillna(0)
-    summary_df['Position Diff'] = pos_diff_series.round(0).astype(int)
-    summary_df['Uncertainty'] = pd.Series(uncertainty_data).fillna(0).round(2)
+    summary_df['Posisjon diff'] = pos_diff_series.round(0).astype(int)
+    summary_df['Usikkerhet'] = pd.Series(uncertainty_data).fillna(0).round(2)
 
     # Sort by expected points (descending)
-    summary_df = summary_df.sort_values('Exp Points', ascending=False)
+    summary_df = summary_df.sort_values('Forventede poeng', ascending=False)
     summary_df = summary_df.reset_index(drop=True)
 
     # Add rank column
-    summary_df.insert(0, 'Rank', range(1, len(summary_df) + 1))
+    summary_df.insert(0, 'Plass', range(1, len(summary_df) + 1))
 
     # Reorder columns: Rank, Team, Current ELO, Exp Points,
     # then probabilities, then performance metrics
     column_order = [
-        'Rank', 'Team', 'Current ELO', 'Exp Points',
-        'CL Prob (%)', 'Europe League Prob (%)',
-        'Conference Prob (%)', 'Relegation Prob (%)',
-        'Position Diff', 'Uncertainty'
+        'Plass', 'Lag', 'Nåværende ELO', 'Forventede poeng',
+        'Vinner (%)', 'CL (%)', 'Europa League (%)',
+        'Conference League (%)', 'Nedrykk (%)',
+        'Posisjon diff', 'Usikkerhet'
     ]
     summary_df = summary_df[column_order]
 
     return summary_df
-
-
-def display_comprehensive_analysis(comprehensive_table, iterations=None):
-    """
-    Display the comprehensive table with proper formatting and explanations.
-
-    Args:
-        comprehensive_table: DataFrame from create_comprehensive_table()
-        iterations: Number of iterations used in simulation (optional)
-    """
-    from IPython.display import display
-
-    if iterations:
-        title = (f"ELITESERIEN 2025 - SIMULATION "
-                 f"({iterations} iterations)")
-    else:
-        title = "ELITESERIEN 2025 - SIMULATION"
-
-    print(title)
-    print("=" * len(title))
-
-    # Display table without index since we have a Rank column
-    from IPython.display import HTML
-    display(HTML(comprehensive_table.to_html(index=False)))
-
-    pos_diff_explanation = ("- Position Diff: ELO ranking vs expected final "
-                            "position (positive = outperforming ELO)")
-    print(pos_diff_explanation)
-    print("- Uncertainty: Standard deviation of simulated final points")
 
 
 def create_season_dashboard(table_mean, position_probs, stats_tracker,
@@ -389,3 +376,97 @@ def create_dashboard_figures(table_mean, position_probs, stats_tracker,
     )
 
     return figures
+
+
+def setup_logos(fetch_logos=False):
+    """
+    Setup team logos, optionally fetching from Football API.
+    
+    Args:
+        fetch_logos: Whether to actually fetch logos from API
+                    (False by default)
+    
+    Returns:
+        bool: True if logos are available, False otherwise
+    """
+    try:
+        from logo_manager import download_all_logos
+        logo_paths = download_all_logos(fetch_logos=fetch_logos)
+        return len(logo_paths) > 0
+            
+    except Exception as e:
+        print(f"Could not set up logos: {e}")
+        return False
+
+
+def display_comprehensive_analysis(comprehensive_table,
+                                   iterations=None,
+                                   fetch_logos=False):
+    """
+    Display the comprehensive table with logos and clean formatting.
+
+    Args:
+        comprehensive_table: DataFrame from create_comprehensive_table()
+        iterations: Number of iterations used in simulation (optional)
+        fetch_logos: Whether to fetch logos from API (False by default)
+    """
+    from IPython.display import display, HTML
+
+    # Try to set up logos
+    logos_available = setup_logos(fetch_logos=fetch_logos)
+
+    if iterations:
+        title = (f"ELITESERIEN 2025 - SIMULERING "
+                 f"({iterations} iterasjoner)")
+    else:
+        title = "ELITESERIEN 2025 - SIMULERING"
+
+    print(title)
+    print("=" * len(title))
+
+    if logos_available:
+        # Create a copy of the table with logos
+        display_table = comprehensive_table.copy()
+
+        try:
+            from logo_manager import create_logo_html
+
+            # Replace team names with logo + name HTML
+            display_table['Lag'] = display_table['Lag'].apply(
+                lambda team: create_logo_html(team, size=20)
+            )
+
+            # Create minimal CSS to prevent wrapping in team column
+            html_table = display_table.to_html(index=False, escape=False)
+            styled_html = f"""
+            <style>
+            table {{
+                table-layout: auto;
+                border-collapse: collapse;
+            }}
+            table td:nth-child(2) {{
+                white-space: nowrap;
+                padding-left: 8px;
+            }}
+            table td {{
+                padding: 4px 8px;
+            }}
+            </style>
+            {html_table}
+            """
+
+            # Display table with minimal styling to prevent wrapping
+            display(HTML(styled_html))
+            
+        except Exception as e:
+            print(f"Could not display with logos: {e}")
+            # Fallback to regular display
+            display(HTML(comprehensive_table.to_html(index=False)))
+    else:
+        # Fallback to regular display without logos
+        display(HTML(comprehensive_table.to_html(index=False)))
+
+    pos_diff_explanation = ("- Posisjon diff: ELO-rangering vs forventet "
+                            "sluttposisjon (positivt = bedre enn ELO)")
+    print(pos_diff_explanation)
+    print("- Usikkerhet: Standardavvik av simulerte sluttpoeng")
